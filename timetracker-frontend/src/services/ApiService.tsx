@@ -9,7 +9,7 @@ export const apiService = {
         if (!res.ok) throw new Error('Could not fetch categories');
         return res.json();
     },
-
+    // Create a new category with the given name
     async createCategory(name: string) {
         const res = await fetch(`${BASE_URL}/categories/create`, {
             method: 'POST',
@@ -18,7 +18,7 @@ export const apiService = {
         });
         return res.json();
     },
-
+    // Update the name of an existing category by ID
     async updateCategory(id: string, name: string) {
         const res = await fetch(`${BASE_URL}/categories/${id}`, {
             method: 'PUT',
@@ -27,7 +27,7 @@ export const apiService = {
         });
         return res.json();
     },
-
+    // Delete a category by ID
     async deleteCategory(id: string) {
         const res = await fetch(`${BASE_URL}/categories/${id}`, {
             method: 'DELETE',

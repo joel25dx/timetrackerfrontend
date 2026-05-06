@@ -1,103 +1,120 @@
-import { act, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+
+// Components
 import { ActivityManager } from './components/ActivityManager';
 import { TimerDisplay } from './components/TimerDisplay';
+import { CategoryChoice } from './components/CategoryChoice';
+import { ButtonActions } from './components/ButtonActions';
+
+// Services
+import { apiService } from './services/ApiService';
 import './App.css';
 
-const API_URL = 'https://timetracker-e87sw.ondigitalocean.app/categories';
-
 export default function App() {
+  // STATE 
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedActivity, setSelectedActivity] = useState(() => localStorage.getItem('activeId') || "");
   const [seconds, setSeconds] = useState(() => Number(localStorage.getItem('seconds')) || 0);
   const [isActive, setIsActive] = useState(() => localStorage.getItem('isActive') === 'true');
 
-  // API-anrop
+  // API FETCHING
   const fetchItems = async () => {
-    const res = await fetch(API_URL);
-    setItems(await res.json());
-    setLoading(false);
+    try {
+      const data = await apiService.getCategories();
+      setItems(data);
+    } catch (err) {
+      console.error("Could not fetch categories:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { fetchItems(); }, []);
+  useEffect(() => {
+    fetchItems();
+  }, []);
 
-  // Timer-effekt
+  // TIMER LOGIC
   useEffect(() => {
     let interval: any;
-    if (isActive) interval = setInterval(() => setSeconds(s => s + 1), 1000);
+    if (isActive) {
+      interval = setInterval(() => setSeconds(s => s + 1), 1000);
+    }
     return () => clearInterval(interval);
   }, [isActive]);
 
-  // Safety feature: Save state to localStorage on change (in case of accidental refresh)
+  // Safety feature, wont reset timer or selected activity on page refresh
   useEffect(() => {
     localStorage.setItem('seconds', seconds.toString());
     localStorage.setItem('isActive', isActive.toString());
     localStorage.setItem('activeId', selectedActivity);
   }, [seconds, isActive, selectedActivity]);
 
+  // Converts total seconds into a MM:SS string format
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = s % 60;
     return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
 
-  // All handlers
+  // HANDLERS
+
+  // Create a new category
   const handleAdd = async (name: string) => {
-    await fetch(`${API_URL}/create`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name })
-    });
+    await apiService.createCategory(name);
     fetchItems();
   };
 
+  // Update an existing category's name
   const handleUpdate = async (id: any, name: string) => {
-    await fetch(`${API_URL}/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name })
-    });
+    await apiService.updateCategory(id, name);
     fetchItems();
   };
 
+  // Delete a category
   const handleDelete = async (id: any) => {
-    await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+    await apiService.deleteCategory(id);
     fetchItems();
   };
 
-  //Save session to backend
-  const saveSession = async () => {
+  // Start the timer for the selected activity
+  const handleStart = () => {
+    if (!selectedActivity) return alert("Please select an activity first!");
+    setIsActive(true);
+  };
+
+
+  // Stop the timer and save the session to the database
+  const handleStop = async () => {
     const activity = items.find(i => i.id === selectedActivity);
-
     const now = new Date();
-
     const start = new Date(now.getTime() - seconds * 1000);
 
-    const sessionData = {
-      categoryName: activity?.name || "Okänd",
-      categoryId: selectedActivity,
-      startTime: start.toISOString(),
-      endTime: now.toISOString()
-    };
-
     try {
-      const response = await fetch('https://timetracker-e87sw.ondigitalocean.app/session/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sessionData)
+      await apiService.createSession({
+        categoryId: selectedActivity,
+        categoryName: activity?.name || "Unknown",
+        startTime: start.toISOString(),
+        endTime: now.toISOString()
       });
 
-      if (!response.ok) throw new Error("Kunde inte spara");
+      console.log(`✅ Session saved: ${activity?.name}, Duration: ${formatTime(seconds)}`);
 
+      setIsActive(false);
+      setSeconds(0);
+      setSelectedActivity("");
     } catch (err) {
-      console.error("Fel vid sparande:", err);
+      alert("Failed to save the session to the database.");
     }
   };
+
+  if (loading) return <div className="loading">Loading tracker...</div>;
 
   return (
     <div className="app-container">
       <h1>Time Tracker</h1>
 
+      {/* Categories CRUD */}
       <ActivityManager
         items={items}
         onAdd={handleAdd}
@@ -106,35 +123,26 @@ export default function App() {
       />
 
       <div className="tracker-section">
-        <select
-          value={selectedActivity}
-          onChange={(e) => setSelectedActivity(e.target.value)}
+        {/* Activity Selection */}
+        <CategoryChoice
+          items={items}
+          selectedId={selectedActivity}
+          onSelect={setSelectedActivity}
           disabled={isActive}
-        >
-          <option value="">Select activity...</option>
-          {items.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-        </select>
+        />
 
-        <TimerDisplay seconds={seconds} formatTime={formatTime} />
+        {/* Clock Display */}
+        <TimerDisplay
+          seconds={seconds}
+          formatTime={formatTime}
+        />
 
-        <button
-          className={isActive ? "stop-btn" : "start-btn"}
-          onClick={async () => {
-            if (isActive) {
-              // Stop and save
-              await saveSession();
-              setIsActive(false);
-              setSeconds(0);
-              setSelectedActivity("");
-            } else {
-              // Start
-              if (!selectedActivity) return alert("Select an activity first!");
-              setIsActive(true);
-            }
-          }}
-        >
-          {isActive ? 'Stop & Save' : 'Start Timer'}
-        </button>
+        {/* Start/Stop Logic */}
+        <ButtonActions
+          isActive={isActive}
+          onStart={handleStart}
+          onStop={handleStop}
+        />
       </div>
     </div>
   );

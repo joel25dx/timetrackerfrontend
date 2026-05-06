@@ -11,7 +11,7 @@ interface Props {
     onUpdate: (id: string | number, newName: string) => void;
     onDelete: (id: string | number) => void;
 }
-
+// Component for managing activities (categories) - add, edit, delete
 export function ActivityManager({ items, onAdd, onUpdate, onDelete }: Props) {
     const [newName, setNewName] = useState("");
     const [editId, setEditId] = useState<string | number | null>(null);
