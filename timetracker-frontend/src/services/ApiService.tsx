@@ -1,5 +1,7 @@
 const BASE_URL = 'https://timetracker-e87sw.ondigitalocean.app';
 
+//ALL HANDLERS MOVED TO API SERVICE, ALL COMPONENTS CALL THIS INSTEAD
+
 export const apiService = {
     // CATEGORIES 
     async getCategories() {
