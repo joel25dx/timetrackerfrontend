@@ -4,8 +4,8 @@ interface Props {
     onSelect: (id: string) => void;
     disabled: boolean;
 }
-
-export function CategorySelector({ items, selectedId, onSelect, disabled }: Props) {
+// Simple dropdown for category selection, used in App.tsx
+export function CategoryChoice({ items, selectedId, onSelect, disabled }: Props) {
     return (
         <select
             value={selectedId}
