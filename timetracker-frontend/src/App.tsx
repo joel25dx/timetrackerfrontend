@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { act, useEffect, useState } from 'react';
 import { ActivityManager } from './components/ActivityManager';
 import { TimerDisplay } from './components/TimerDisplay';
 import './App.css';
@@ -28,7 +28,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isActive]);
 
-  // Spara till localStorage
+  // Safety feature: Save state to localStorage on change (in case of accidental refresh)
   useEffect(() => {
     localStorage.setItem('seconds', seconds.toString());
     localStorage.setItem('isActive', isActive.toString());
@@ -41,7 +41,7 @@ export default function App() {
     return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
 
-  // Handlers för API
+  // All handlers
   const handleAdd = async (name: string) => {
     await fetch(`${API_URL}/create`, {
       method: 'POST',
@@ -65,11 +65,45 @@ export default function App() {
     fetchItems();
   };
 
+  //Save session to backend
+  const saveSession = async () => {
+    const activity = items.find(i => i.id === selectedActivity);
+
+    const now = new Date();
+
+    const start = new Date(now.getTime() - seconds * 1000);
+
+    const sessionData = {
+      categoryName: activity?.name || "Okänd",
+      categoryId: selectedActivity,
+      startTime: start.toISOString(),
+      endTime: now.toISOString()
+    };
+
+    try {
+      const response = await fetch('https://timetracker-e87sw.ondigitalocean.app/session/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sessionData)
+      });
+
+      if (!response.ok) throw new Error("Kunde inte spara");
+
+    } catch (err) {
+      console.error("Fel vid sparande:", err);
+    }
+  };
+
   return (
     <div className="app-container">
       <h1>Time Tracker</h1>
 
-      <ActivityManager items={items} onAdd={handleAdd} onUpdate={handleUpdate} onDelete={handleDelete} />
+      <ActivityManager
+        items={items}
+        onAdd={handleAdd}
+        onUpdate={handleUpdate}
+        onDelete={handleDelete}
+      />
 
       <div className="tracker-section">
         <select
@@ -77,7 +111,7 @@ export default function App() {
           onChange={(e) => setSelectedActivity(e.target.value)}
           disabled={isActive}
         >
-          <option value="">Choose activity</option>
+          <option value="">Select activity...</option>
           {items.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
         </select>
 
@@ -85,18 +119,21 @@ export default function App() {
 
         <button
           className={isActive ? "stop-btn" : "start-btn"}
-          onClick={() => {
+          onClick={async () => {
             if (isActive) {
+              // Stop and save
+              await saveSession();
               setIsActive(false);
               setSeconds(0);
               setSelectedActivity("");
             } else {
-              if (!selectedActivity) return alert("Choose activity!");
+              // Start
+              if (!selectedActivity) return alert("Select an activity first!");
               setIsActive(true);
             }
           }}
         >
-          {isActive ? 'Stop' : 'Start'}
+          {isActive ? 'Stop & Save' : 'Start Timer'}
         </button>
       </div>
     </div>
