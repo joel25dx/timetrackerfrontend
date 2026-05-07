@@ -145,12 +145,14 @@ export default function App() {
           />
 
           <div className="timer-card">
+            {/* Activity Selection */}
             <CategoryChoice
               items={items}
               selectedId={selectedActivity}
               onSelect={setSelectedActivity}
               disabled={isActive} // Prevent changing category while timer is running
             />
+            {/* Clock Display */}
             <TimerDisplay
               seconds={seconds}
               formatTime={(s) => {
@@ -161,6 +163,7 @@ export default function App() {
                 return `${h}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
               }}
             />
+            {/* Start/Stop Logic */}
             <ButtonActions
               isActive={isActive}
               onStart={handleStart}
