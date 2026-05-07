@@ -36,6 +36,13 @@ export const apiService = {
     },
 
     //  SESSIONS
+
+    async getAllSessions() {
+        const res = await fetch(`${BASE_URL}/session`);
+        if (!res.ok) throw new Error('Could not fetch sessions');
+        return res.json();
+    },
+    // Create a new session with the provided data (category, start/end time)
     async createSession(sessionData: {
         categoryId: string;
         categoryName: string;
@@ -49,5 +56,17 @@ export const apiService = {
         });
         if (!res.ok) throw new Error('Could not save session');
         return res.json();
+    },
+    // Update the category of an existing session by session ID
+    async updateSession(sessionId: string, categoryId: string, categoryName: string) {
+        const res = await fetch(`${BASE_URL}/session/${sessionId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ categoryId, categoryName }),
+        });
+        if (!res.ok) throw new Error('Could not update session');
+        return res.json();
     }
 };
+
+
