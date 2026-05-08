@@ -1,5 +1,3 @@
-import React from 'react';
-
 //Match the Session and Category interfaces with the backend API structure
 interface Session {
     _id?: string;
